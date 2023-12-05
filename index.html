@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wordle Solver</title>
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400&display=swap">
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Rubik', sans-serif;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        input, .suggestionBox {
+            width: 62px;
+            height: 62px;
+            text-align: center;
+            font-size: 32px;
+            font-weight: 600;
+            border: 2px solid lightgrey;
+            background-color: white;
+            box-shadow: rgba(0, 0, 0, 0.05) 0px 0px 0px 1px;
+            cursor: pointer;
+            color: white;
+            text-transform: uppercase;
+        }
+
+        .suggestionBox {
+            color: black;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .green {
+            background-color: #6aaa64;
+            border: none;
+        }
+
+        .yellow {
+            background-color: #C9B458;
+            border: none;
+        }
+
+        .grey {
+            background-color: #787C7E;  /* Light grey */
+            border: none;
+        }
+
+        button {
+            font-size: 16px;
+            margin: 10px 5px;
+            padding: 10px;
+            cursor: pointer;
+            border: none;
+            background-color: black;
+            color: white;
+            font-family: 'Rubik', sans-serif;
+            box-shadow: rgba(0, 0, 0, 0.05) 0px 0px 0px 1px;
+            border-radius: 10px;
+        }
+
+        button:hover {
+            background-color:#6aaa64;
+        }
+
+        #guessContainer {
+            display: grid;
+            grid-template-columns: repeat(5, 70px); /* 5 columns */
+            grid-template-rows: repeat(6, 1fr); /* 6 rows */
+            justify-items: center;
+            gap: 5px;
+        }
+
+        hr {
+            border: 1px solid lightgrey;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-weight: 700;
+            margin: 15px 0px;
+        }
+
+        #topSuggestion {
+            display: flex;
+            gap: 5px;
+        }
+
+        #guessContainer {
+            display: grid;
+            grid-template-columns: repeat(5, 70px); /* 5 columns */
+            grid-template-rows: repeat(6, 1fr); /* 6 rows */
+            justify-items: center;
+            gap: 5px;
+            animation: moveIn 0.5s ease-out; /* Animation properties */
+        }
+
+        /* Keyframes for the animation */
+        @keyframes flip {
+            0% {
+                transform: scaleY(1);
+            }
+
+            50% {
+                background: white;
+                transform: scaleY(0);
+            }
+
+            100% {
+                transform: scaleY(1);
+                background: white;
+            }
+        }
+
+        .flip {
+            animation: flip 500ms ease forwards;
+        }
+
+        #infoIcon {
+            cursor: pointer;
+            font-size: 24px;
+            color: black;
+        }
+
+        #infoIcon:hover {
+            fill: #C9B458;
+        }
+
+        #infoBox {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #f0f0f0;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            z-index: 1000;
+            max-width: 400px;
+            text-align: left;
+        }
+
+        .header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
+        span {
+            display: flex;
+            align-items: center;
+            margin: 0%;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Wordle Solver</h1>
+        <span id="infoIcon" onclick="toggleInfoBox()"><svg xmlns="http://www.w3.org/2000/svg" height="25" width="25" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2023 Fonticons, Inc.--><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336h24V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h48c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg></span>
+    </div>
+    <hr>
+    <div id="infoBox">
+        <h2>How to Use</h2>
+        <p>Enter your guesses in the input boxes below. Click on the boxes to select the color of the letters:</p>
+        <ul>
+            <li><span class="green">Green</span> - Correct letter and correct position</li>
+            <li><span class="yellow">Yellow</span> - Correct letter but wrong position</li>
+            <li><span class="grey">Grey</span> - Incorrect letter</li>
+        </ul>
+        <p>Submit your guess, and the Wordle Solver will provide suggestions based on your feedback.</p>
+    </div>
+
+    <div id="guessContainer">
+        <!-- Render initial 5 input boxes -->
+        {% for i in range(5) %}
+            <input name="guess{{ i }}" maxlength="1" onclick="changeColor(this)">
+        {% endfor %}
+    </div>
+    <br>
+    <button type="button" onclick="submitGuess()">Submit Guess</button>
+    <h2>Next Guess</h2>
+    <div id="topSuggestion">
+        <!-- Display each letter of the top suggested word in its own box -->
+        {% for letter in top_suggestion %}
+            <div class="suggestionBox flip">{{ letter }}</div>
+        {% endfor %}
+    </div>
+    <div id="otherSuggestions"></div>
+
+
+
+    <script>
+
+        function toggleInfoBox() {
+            var infoBox = document.getElementById('infoBox');
+            infoBox.style.display = (infoBox.style.display === 'none' || infoBox.style.display === '') ? 'block' : 'none';
+        }
+
+
+        function changeColor(element) {
+            if (element.classList.contains('grey')) {
+                element.classList.remove('grey');
+                element.classList.add('green');
+            } else if (element.classList.contains('green')) {
+                element.classList.remove('green');
+                element.classList.add('yellow');
+            } else {
+                element.classList.remove('yellow');
+                element.classList.add('grey');
+            }
+        }
+
+        function submitGuess() {
+            var feedback = [];  // New list for actual letters
+            var guess = [];
+
+            guess.length = 0;
+            console.log(guess)
+
+            $('input[name^="guess"]').each(function() {
+                var letter = $(this).val().toLowerCase();  // Get the actual letter from the input
+                guess.push(letter);  // Add the letter to the actual_letters list
+                if ($(this).hasClass('green')) {
+                    feedback.push('g');
+                } else if ($(this).hasClass('yellow')) {
+                    feedback.push('y');
+                } else {
+                    feedback.push('w');
+                }
+            });
+
+            console.log('Sending feedback:', feedback);
+            console.log("Sending guess", guess);
+
+            $.ajax({
+                type: 'POST',
+                url: '/submit_guess',
+                data: { 'feedback': feedback.slice(-5), 'guess': guess.slice(-5)},
+                success: function(response) {
+                    console.log('Received response:', response);
+                    displaySuggestions(response.suggestions);
+                    addNewInputBoxes();  // Add new input boxes after each guess
+                },
+                error: function(error) {
+                    console.error('Error:', error);
+                }
+            });
+
+        }
+
+        function displaySuggestions(response) {
+            console.log('Received response:', response);
+
+            if (typeof response === 'string') {
+                $('#topSuggestion').html('<p>' + response + '</p>');
+                $('#otherSuggestions').html('');  // Clear other suggestions
+            } else if (Array.isArray(response)) {
+                var topSuggestion = response.slice(-1)[0];
+                var otherSuggestions = response.slice(1, -1);
+
+                // Display each letter of the top suggested word in its own box
+                var topSuggestionContainer = $('#topSuggestion');
+                topSuggestionContainer.html('');  // Clear previous content
+
+                for (var i = 0; i < topSuggestion.length; i++) {
+                    // Append each letter with the flip animation class
+                    topSuggestionContainer.append('<div class="suggestionBox">' + topSuggestion[i] + '</div>');
+                }
+
+                // Display other suggestions
+                var otherSuggestionsContainer = $('#otherSuggestions');
+                otherSuggestionsContainer.html('<p>Other Suggestions: ' + otherSuggestions.join(', ') + '</p>');
+
+                // Apply flip animation to top suggestion boxes
+                applyFlip(topSuggestionContainer.find('.suggestionBox'));
+            } else {
+                console.error('Unexpected response format:', response);
+            }
+        }
+
+        // Function to apply the flip animation
+        function applyFlip(elements) {
+            elements.each(function (i, box) {
+                $(box).addClass('flip');
+                box.style.animationDelay = `${i * 100}ms`;
+            });
+        }
+
+
+        function addNewInputBoxes() {
+            // Add 5 new input boxes
+            for (var i = 0; i < 5; i++) {
+                var input = $('<input>').attr({
+                    type: 'text',
+                    name: 'guess' + i,
+                    maxlength: '1'
+                }).click(function() {
+                    changeColor(this);
+                });
+
+                $('#guessContainer').append(input);
+            }
+        }
+
+    </script>
+</body>
+</html>
